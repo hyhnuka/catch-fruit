@@ -1,7 +1,6 @@
 // ==========================================
 // 1. SETUP SIGNALR & KONTROL INPUT REMOTE
 // ==========================================
-// Tambahkan ?ngrok-skip-browser-warning=true langsung di URL
 const BACKEND_URL = "https://delighted-steam-impurity.ngrok-free.dev";
 
 const connection = new signalR.HubConnectionBuilder()
@@ -13,35 +12,42 @@ const connection = new signalR.HubConnectionBuilder()
     .configureLogging(signalR.LogLevel.Information)
     .build();
 
-const statusText = document.getElementById("status-text");
+// Deklarasi remoteKeys secara global
+const remoteKeys = {
+    ArrowLeft: false,
+    ArrowRight: false,
+    Space: false
+};
 
-// Sambungkan ke server
-async function startSignalR() {
-    try {
-        await connection.start();
-        console.log("SignalR Connected!");
-        statusText.textContent = "Terhubung! Masukkan nama:";
-        statusText.style.color = "#4ade80";
-    } catch (err) {
-        console.error("Gagal Konek SignalR:", err);
-        statusText.textContent = "Gagal terhubung ke server. Coba refresh.";
-        statusText.style.color = "#f87171";
+// Helper null-safe untuk mengubah teks status
+function setStatus(elementId, text, color = null) {
+    const el = document.getElementById(elementId);
+    if (el) {
+        el.textContent = text;
+        if (color) el.style.color = color;
     }
 }
 
-startSignalR();
-
-// Dengarkan event gerak dari controller HP
-connection.on("ReceiveMove", (key, isPressed) => {
-    if (remoteKeys.hasOwnProperty(key)) {
-        remoteKeys[key] = isPressed;
+// Dengarkan event gerak dari controller HP (Mendukung format 'key, isPressed' maupun 'action string')
+connection.on("ReceiveMove", (param1, param2) => {
+    if (typeof param1 === "string" && typeof param2 === "boolean") {
+        // Format: connection.invoke("SendMove", "ArrowLeft", true)
+        if (remoteKeys.hasOwnProperty(param1)) {
+            remoteKeys[param1] = param2;
+        }
+    } else if (typeof param1 === "string") {
+        // Format: connection.invoke("SendMove", "left_down")
+        const action = param1;
+        if (action === "left_down") remoteKeys.ArrowLeft = true;
+        else if (action === "left_up") remoteKeys.ArrowLeft = false;
+        else if (action === "right_down") remoteKeys.ArrowRight = true;
+        else if (action === "right_up") remoteKeys.ArrowRight = false;
     }
 });
 
 // Dengarkan event saat pemain memasukkan nama di HP
 connection.on("PlayerJoined", (playerName) => {
-    const statusEl = document.getElementById("lobby-status");
-    if (statusEl) statusEl.textContent = `Pemain Terhubung: ${playerName}! Game dimulai...`;
+    setStatus("lobby-status", `Pemain Terhubung: ${playerName}! Game dimulai...`);
 
     setTimeout(() => {
         const startScreen = document.getElementById("start-screen");
@@ -57,13 +63,26 @@ connection.on("PlayerJoined", (playerName) => {
     }, 1500);
 });
 
-connection.start().catch(err => console.error("Koneksi SignalR Gagal:", err));
+// Jalankan koneksi SignalR
+async function startSignalR() {
+    try {
+        await connection.start();
+        console.log("SignalR Connected!");
+        setStatus("status-text", "Terhubung! Masukkan nama:", "#4ade80");
+        setStatus("connection-status", "SignalR Connected!", "#4ade80");
+    } catch (err) {
+        console.error("Gagal Konek SignalR:", err);
+        setStatus("status-text", "Gagal terhubung ke server. Coba refresh.", "#f87171");
+        setStatus("connection-status", "SignalR Disconnected", "#f87171");
+    }
+}
+
+startSignalR();
 
 // Render QR Code mengarah ke file controller.html
 window.addEventListener("DOMContentLoaded", () => {
     const qrContainer = document.getElementById("qrcode");
     if (qrContainer) {
-        // Mengarahkan ke file controller.html di hosting/server yang sama
         const controllerUrl = window.location.href.replace(/index\.html.*$/i, "").replace(/\/$/, "") + "/controller.html";
         new QRCode(qrContainer, {
             text: controllerUrl,
@@ -72,8 +91,6 @@ window.addEventListener("DOMContentLoaded", () => {
         });
     }
 });
-
-
 // ==========================================
 // 2. GAME CLASSES & LOGIC
 // ==========================================
