@@ -3,41 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Catch the Falling Objects</title>
+    <title>Catch the Falling Objects - Videotron</title>
     <link rel="stylesheet" href="styles.css">
+    <!-- Pustaka QRCode & SignalR CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
 </head>
 <body>
-    <div id="game-background"></div>
-    <div id="scoreboard">
-        <h2>High Scores</h2>
-        <div id="scores-list">
-            <!-- Scores will be added here dynamically -->
-        </div>
-    </div>
-    
     <div id="game-container">
-        <div id="name-popup" class="popup hidden">
-            <div class="popup-content">
-                <h2>This page says</h2>
-                <p>Please enter your name!</p>
-                <button id="popup-ok" class="popup-button">OK</button>
-            </div>
-        </div>
-        
+        <!-- Layar Lobby Antrean & QR Code -->
         <div id="start-screen" class="screen">
             <h1>Catch the Objects!</h1>
-            <p>Use arrow keys to move and catch the good objects</p>
-            <div style="margin-bottom: 20px;">
-                <input type="text" id="player-name" placeholder="Enter your name" required>
+            <p>Pindai QR Code lewat kamera HP untuk mulai bermain:</p>
+            
+            <div id="qrcode-wrapper" style="display: flex; justify-content: center; margin: 15px 0;">
+                <div id="qrcode" style="padding: 10px; background: #fff; border-radius: 10px;"></div>
             </div>
-            <button id="start-button">Start Game</button>
+
+            <p id="lobby-status" style="font-weight: bold; color: #2e7d32;">Menunggu pemain bergabung...</p>
         </div>
         
+        <!-- Layar Game Play -->
         <div id="game-screen" class="screen hidden">
             <canvas id="gameCanvas"></canvas>
             <button id="pause-button">Pause</button>
         </div>
         
+        <!-- Layar Game Over -->
         <div id="game-over-screen" class="screen hidden">
             <h1>Game Over!</h1>
             <p id="game-over-message">Game Over!</p>
@@ -45,6 +37,7 @@
             <button id="restart-button">Play Again</button>
         </div>
     </div>
+
     <script src="game.js"></script>
 </body>
 </html>
