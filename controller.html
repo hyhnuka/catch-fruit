@@ -99,30 +99,56 @@
 
     <p style="font-size: 0.8rem; color: #475569;">Interactive Videotron Controller</p>
 
-    <script>
-        // Masukkan URL Ngrok Backend Docker kamu
+   <script>
+        // URL Ngrok backend Docker kamu
         const BACKEND_URL = "https://delighted-steam-impurity.ngrok-free.dev";
 
+        // Tambahkan ngrok-skip-browser-warning pada query string URL hub
         const connection = new signalR.HubConnectionBuilder()
-            .withUrl(BACKEND_URL + "/hubs/game")
+            .withUrl(BACKEND_URL + "/hubs/game?ngrok-skip-browser-warning=true", {
+                skipNegotiation: false,
+                transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.LongPolling
+            })
             .withAutomaticReconnect()
+            .configureLogging(signalR.LogLevel.Information)
             .build();
 
-        connection.start()
-            .then(() => { document.getElementById("status-text").textContent = "Terhubung! Masukkan nama:"; })
-            .catch(err => { document.getElementById("status-text").textContent = "Gagal terhubung ke server."; });
+        const statusText = document.getElementById("status-text");
 
-        function joinGame() {
-            const name = document.getElementById("player-name").value.trim();
+        async function initConnection() {
+            try {
+                await connection.start();
+                statusText.textContent = "Terhubung! Masukkan nama:";
+                statusText.style.color = "#4ade80";
+            } catch (err) {
+                console.error("SignalR Connection Error:", err);
+                statusText.textContent = "Gagal terhubung ke server. Coba refresh halaman.";
+                statusText.style.color = "#f87171";
+            }
+        }
+
+        initConnection();
+
+        async function joinGame() {
+            const nameInput = document.getElementById("player-name");
+            const name = nameInput.value.trim();
             if (!name) return alert("Silakan isi nama terlebih dahulu!");
 
-            connection.invoke("RegisterQueue", name)
-                .then(() => {
-                    document.getElementById("join-card").classList.add("hidden");
-                    document.getElementById("dpad-card").classList.remove("hidden");
-                    document.getElementById("status-text").textContent = "Kendalikan keranjang dari tombol ini:";
-                })
-                .catch(err => alert("Gagal mendaftar: " + err));
+            // Pastikan koneksi sudah berstatus Connected sebelum mengirim data
+            if (connection.state !== signalR.HubConnectionState.Connected) {
+                return alert("Koneksi ke server belum siap. Silakan tunggu atau muat ulang halaman.");
+            }
+
+            try {
+                await connection.invoke("RegisterQueue", name);
+                document.getElementById("join-card").classList.add("hidden");
+                document.getElementById("dpad-card").classList.remove("hidden");
+                statusText.textContent = "Kendalikan keranjang dari tombol ini:";
+                statusText.style.color = "#94a3b8";
+            } catch (err) {
+                console.error("RegisterQueue Error:", err);
+                alert("Gagal mendaftar antrean: " + err);
+            }
         }
 
         function bindDpad(buttonId, keyCode) {

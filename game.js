@@ -1,15 +1,35 @@
 // ==========================================
 // 1. SETUP SIGNALR & KONTROL INPUT REMOTE
 // ==========================================
-// Masukkan URL Ngrok Backend Docker kamu (atau http://localhost:5000 jika satu laptop)
-const BACKEND_URL = "https://delighted-steam-impurity.ngrok-free.dev"; 
-
-const remoteKeys = { ArrowLeft: false, ArrowRight: false };
+// Tambahkan ?ngrok-skip-browser-warning=true langsung di URL
+const BACKEND_URL = "https://delighted-steam-impurity.ngrok-free.dev";
 
 const connection = new signalR.HubConnectionBuilder()
-    .withUrl(BACKEND_URL + "/hubs/game")
+    .withUrl(BACKEND_URL + "/hubs/game?ngrok-skip-browser-warning=true", {
+        skipNegotiation: false,
+        transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.LongPolling
+    })
     .withAutomaticReconnect()
+    .configureLogging(signalR.LogLevel.Information)
     .build();
+
+const statusText = document.getElementById("status-text");
+
+// Sambungkan ke server
+async function startSignalR() {
+    try {
+        await connection.start();
+        console.log("SignalR Connected!");
+        statusText.textContent = "Terhubung! Masukkan nama:";
+        statusText.style.color = "#4ade80";
+    } catch (err) {
+        console.error("Gagal Konek SignalR:", err);
+        statusText.textContent = "Gagal terhubung ke server. Coba refresh.";
+        statusText.style.color = "#f87171";
+    }
+}
+
+startSignalR();
 
 // Dengarkan event gerak dari controller HP
 connection.on("ReceiveMove", (key, isPressed) => {
