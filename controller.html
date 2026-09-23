@@ -96,13 +96,13 @@
         <p id="status-text">Menghubungkan ke server...</p>
     </div>
 
-    <!-- 1. Tampilan Input Nama -->
+    <!-- 1. Input Nama -->
     <div id="join-card" class="card">
         <input type="text" id="player-name" placeholder="Ketik Namamu..." maxlength="15" autocomplete="off" />
         <button class="btn btn-green" onclick="joinGame()">Mulai Bermain</button>
     </div>
 
-    <!-- 2. Tampilan Ruang Antrean (Jika ada orang lain yang sedang main) -->
+    <!-- 2. Ruang Antrean -->
     <div id="waiting-card" class="card hidden">
         <h3 style="color: #facc15;">Dalam Antrean</h3>
         <div id="queue-badge" class="queue-badge">#1</div>
@@ -110,13 +110,13 @@
         <p style="font-size: 0.8rem; color: #64748b;">Tombol kontroler akan muncul otomatis saat giliranmu tiba.</p>
     </div>
 
-    <!-- 3. Tampilan Tombol Gamepad HP (Hanya saat giliran aktif) -->
+    <!-- 3. Tombol Gamepad HP -->
     <div id="dpad-card" class="dpad-container hidden">
         <button class="btn-ctrl" id="btn-left">◀</button>
         <button class="btn-ctrl" id="btn-right">▶</button>
     </div>
 
-    <!-- 4. Tampilan Game Over / Pilihan Main Lagi -->
+    <!-- 4. Pilihan Game Over / Main Lagi -->
     <div id="game-over-card" class="card hidden">
         <h3 style="color: #ef4444; font-size: 1.4rem;">Game Over!</h3>
         <p id="reason-text" style="color: #e2e8f0;">Sesi permainan telah selesai.</p>
@@ -127,7 +127,7 @@
         </div>
     </div>
 
-    <!-- 5. Tampilan Exit / Terima Kasih -->
+    <!-- 5. Tampilan Exit -->
     <div id="exit-card" class="card hidden">
         <h3 style="color: #4ade80;">Terima Kasih!</h3>
         <p>Terima kasih telah mencoba permainan videotron interaktif ini.</p>
@@ -151,7 +151,6 @@
         const statusText = document.getElementById("status-text");
         let savedPlayerName = "";
 
-        // Fungsi bantu ganti layar
         function showScreen(screenId) {
             ["join-card", "waiting-card", "dpad-card", "game-over-card", "exit-card"].forEach(id => {
                 const el = document.getElementById(id);
@@ -187,7 +186,6 @@
             savedPlayerName = name;
 
             try {
-                // Daftarkan nama ke server SignalR
                 await connection.invoke("RegisterQueue", name);
             } catch (err) {
                 console.error("RegisterQueue Error:", err);
@@ -195,7 +193,6 @@
             }
         }
 
-        // 1. Sinyal antrean diterima
         connection.on("QueueWaiting", (position, name) => {
             showScreen("waiting-card");
             document.getElementById("queue-badge").innerText = `#${position}`;
@@ -204,14 +201,13 @@
             statusText.style.color = "#38bdf8";
         });
 
-        // 2. Giliran aktif tiba -> Buka gamepad
         connection.on("YourTurnToPlay", (name) => {
             showScreen("dpad-card");
             statusText.textContent = `Giliranmu, ${name}! Gerakkan keranjang:`;
             statusText.style.color = "#facc15";
         });
 
-        // 3. Sinyal Game Over / Waktu Habis / AFK dari server
+        // Event Game Over: Sembunyikan gamepad, tampilkan tombol Main Lagi / Keluar
         connection.on("GameOverNotification", (reason) => {
             showScreen("game-over-card");
             document.getElementById("reason-text").innerText = `Alasan: ${reason}`;
@@ -219,7 +215,6 @@
             statusText.style.color = "#ef4444";
         });
 
-        // Pilihan: Antre Ulang dengan nama yang sama
         async function playAgain() {
             if (!savedPlayerName) return resetToHome();
             try {
@@ -230,14 +225,12 @@
             }
         }
 
-        // Pilihan: Keluar
         function exitGame() {
             showScreen("exit-card");
             statusText.textContent = "Selesai bermain.";
             statusText.style.color = "#94a3b8";
         }
 
-        // Kembali ke form awal jika ingin input nama baru
         function resetToHome() {
             showScreen("join-card");
             document.getElementById("player-name").value = "";
@@ -245,7 +238,6 @@
             statusText.style.color = "#4ade80";
         }
 
-        // Event listener D-Pad
         function bindDpad(buttonId, keyCode) {
             const btn = document.getElementById(buttonId);
             const send = (isPressed) => {
