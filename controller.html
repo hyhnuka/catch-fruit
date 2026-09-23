@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -32,6 +31,7 @@
             display: flex;
             flex-direction: column;
             gap: 14px;
+            text-align: center;
         }
         input {
             padding: 14px;
@@ -43,16 +43,20 @@
             text-align: center;
             outline: none;
         }
-        button.btn-join {
+        .btn {
             padding: 14px;
             border-radius: 10px;
             border: none;
-            background: #22c55e;
             color: white;
             font-weight: bold;
-            font-size: 1.1rem;
+            font-size: 1rem;
             cursor: pointer;
+            transition: opacity 0.2s;
         }
+        .btn:active { opacity: 0.8; }
+        .btn-green { background: #22c55e; }
+        .btn-blue { background: #3b82f6; }
+        .btn-red { background: #ef4444; }
 
         .dpad-container {
             display: flex;
@@ -78,33 +82,63 @@
             background: #1d4ed8;
         }
         .hidden { display: none !important; }
+        .queue-badge {
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: #38bdf8;
+            margin: 6px 0;
+        }
     </style>
 </head>
 <body>
     <div>
         <h2>Gamepad Videotron</h2>
-        <p id="status-text">Hubungkan ke layar untuk mulai bermain</p>
+        <p id="status-text">Menghubungkan ke server...</p>
     </div>
 
-    <!-- Tampilan 1: Input Nama -->
+    <!-- 1. Tampilan Input Nama -->
     <div id="join-card" class="card">
         <input type="text" id="player-name" placeholder="Ketik Namamu..." maxlength="15" autocomplete="off" />
-        <button class="btn-join" onclick="joinGame()">Mulai Bermain</button>
+        <button class="btn btn-green" onclick="joinGame()">Mulai Bermain</button>
     </div>
 
-    <!-- Tampilan 2: Tombol Gamepad HP -->
+    <!-- 2. Tampilan Ruang Antrean (Jika ada orang lain yang sedang main) -->
+    <div id="waiting-card" class="card hidden">
+        <h3 style="color: #facc15;">Dalam Antrean</h3>
+        <div id="queue-badge" class="queue-badge">#1</div>
+        <p id="queue-text">Menunggu giliran bermain...</p>
+        <p style="font-size: 0.8rem; color: #64748b;">Tombol kontroler akan muncul otomatis saat giliranmu tiba.</p>
+    </div>
+
+    <!-- 3. Tampilan Tombol Gamepad HP (Hanya saat giliran aktif) -->
     <div id="dpad-card" class="dpad-container hidden">
         <button class="btn-ctrl" id="btn-left">◀</button>
         <button class="btn-ctrl" id="btn-right">▶</button>
     </div>
 
+    <!-- 4. Tampilan Game Over / Pilihan Main Lagi -->
+    <div id="game-over-card" class="card hidden">
+        <h3 style="color: #ef4444; font-size: 1.4rem;">Game Over!</h3>
+        <p id="reason-text" style="color: #e2e8f0;">Sesi permainan telah selesai.</p>
+        
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+            <button class="btn btn-blue" onclick="playAgain()">Main Lagi (Antre Ulang)</button>
+            <button class="btn btn-red" onclick="exitGame()">Keluar / Selesai</button>
+        </div>
+    </div>
+
+    <!-- 5. Tampilan Exit / Terima Kasih -->
+    <div id="exit-card" class="card hidden">
+        <h3 style="color: #4ade80;">Terima Kasih!</h3>
+        <p>Terima kasih telah mencoba permainan videotron interaktif ini.</p>
+        <button class="btn btn-green" style="margin-top: 10px;" onclick="resetToHome()">Kembali ke Awal</button>
+    </div>
+
     <p style="font-size: 0.8rem; color: #475569;">Interactive Videotron Controller</p>
 
-   <script>
-        // URL Ngrok backend Docker kamu
+    <script>
         const BACKEND_URL = "https://delighted-steam-impurity.ngrok-free.dev";
 
-        // Tambahkan ngrok-skip-browser-warning pada query string URL hub
         const connection = new signalR.HubConnectionBuilder()
             .withUrl(BACKEND_URL + "/hubs/game?ngrok-skip-browser-warning=true", {
                 skipNegotiation: false,
@@ -115,6 +149,17 @@
             .build();
 
         const statusText = document.getElementById("status-text");
+        let savedPlayerName = "";
+
+        // Fungsi bantu ganti layar
+        function showScreen(screenId) {
+            ["join-card", "waiting-card", "dpad-card", "game-over-card", "exit-card"].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add("hidden");
+            });
+            const target = document.getElementById(screenId);
+            if (target) target.classList.remove("hidden");
+        }
 
         async function initConnection() {
             try {
@@ -135,23 +180,72 @@
             const name = nameInput.value.trim();
             if (!name) return alert("Silakan isi nama terlebih dahulu!");
 
-            // Pastikan koneksi sudah berstatus Connected sebelum mengirim data
             if (connection.state !== signalR.HubConnectionState.Connected) {
-                return alert("Koneksi ke server belum siap. Silakan tunggu atau muat ulang halaman.");
+                return alert("Koneksi ke server belum siap. Silakan tunggu.");
             }
 
+            savedPlayerName = name;
+
             try {
+                // Daftarkan nama ke server SignalR
                 await connection.invoke("RegisterQueue", name);
-                document.getElementById("join-card").classList.add("hidden");
-                document.getElementById("dpad-card").classList.remove("hidden");
-                statusText.textContent = "Kendalikan keranjang dari tombol ini:";
-                statusText.style.color = "#94a3b8";
             } catch (err) {
                 console.error("RegisterQueue Error:", err);
                 alert("Gagal mendaftar antrean: " + err);
             }
         }
 
+        // 1. Sinyal antrean diterima
+        connection.on("QueueWaiting", (position, name) => {
+            showScreen("waiting-card");
+            document.getElementById("queue-badge").innerText = `#${position}`;
+            document.getElementById("queue-text").innerText = `Halo ${name}, kamu antrean ke-${position}. Harap perhatikan layar videotron!`;
+            statusText.textContent = "Menunggu giliran bermain...";
+            statusText.style.color = "#38bdf8";
+        });
+
+        // 2. Giliran aktif tiba -> Buka gamepad
+        connection.on("YourTurnToPlay", (name) => {
+            showScreen("dpad-card");
+            statusText.textContent = `Giliranmu, ${name}! Gerakkan keranjang:`;
+            statusText.style.color = "#facc15";
+        });
+
+        // 3. Sinyal Game Over / Waktu Habis / AFK dari server
+        connection.on("GameOverNotification", (reason) => {
+            showScreen("game-over-card");
+            document.getElementById("reason-text").innerText = `Alasan: ${reason}`;
+            statusText.textContent = "Permainan Selesai!";
+            statusText.style.color = "#ef4444";
+        });
+
+        // Pilihan: Antre Ulang dengan nama yang sama
+        async function playAgain() {
+            if (!savedPlayerName) return resetToHome();
+            try {
+                await connection.invoke("RegisterQueue", savedPlayerName);
+            } catch (err) {
+                console.error("Gagal antre ulang:", err);
+                alert("Gagal masuk antrean lagi: " + err);
+            }
+        }
+
+        // Pilihan: Keluar
+        function exitGame() {
+            showScreen("exit-card");
+            statusText.textContent = "Selesai bermain.";
+            statusText.style.color = "#94a3b8";
+        }
+
+        // Kembali ke form awal jika ingin input nama baru
+        function resetToHome() {
+            showScreen("join-card");
+            document.getElementById("player-name").value = "";
+            statusText.textContent = "Masukkan nama untuk mulai:";
+            statusText.style.color = "#4ade80";
+        }
+
+        // Event listener D-Pad
         function bindDpad(buttonId, keyCode) {
             const btn = document.getElementById(buttonId);
             const send = (isPressed) => {
@@ -167,33 +261,6 @@
 
         bindDpad("btn-left", "ArrowLeft");
         bindDpad("btn-right", "ArrowRight");
-
-        // Saat submit nama di HP
-        function register() {
-            const name = document.getElementById("nameInput").value;
-            connection.invoke("RegisterQueue", name).catch(err => console.error(err));
-        }
-
-        // 1. Jika masih mengantre
-        connection.on("QueueWaiting", (position, name) => {
-            document.getElementById("loginSection").style.display = "none";
-            document.getElementById("waitingSection").style.display = "block";
-            document.getElementById("controllerSection").style.display = "none";
-            document.getElementById("queueText").innerText = `Halo ${name}, kamu antrean ke-${position}. Harap tunggu!`;
-        });
-
-        // 2. Gilirannya tiba (1 orang aktif)
-        connection.on("YourTurnToPlay", (name) => {
-            document.getElementById("waitingSection").style.display = "none";
-            document.getElementById("controllerSection").style.display = "block";
-        });
-
-        // 3. Selesai main / AFK
-        connection.on("GameOverNotification", (reason) => {
-            document.getElementById("controllerSection").style.display = "none";
-            document.getElementById("gameOverSection").style.display = "block";
-            document.getElementById("reasonText").innerText = `Permainan selesai: ${reason}`;
-        });
     </script>
 </body>
 </html>
