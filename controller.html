@@ -122,8 +122,8 @@
         <p id="reason-text" style="color: #e2e8f0;">Sesi permainan telah selesai.</p>
         
         <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
-            <button class="btn btn-blue" onclick="playAgain()">Main Lagi (Antre Ulang)</button>
-            <button class="btn btn-red" onclick="exitGame()">Keluar / Selesai</button>
+            <button class="btn btn-blue" onclick="playAgain()">Main Lagi</button>
+            <button class="btn btn-red" onclick="exitGame()">Selesai</button>
         </div>
     </div>
 
@@ -210,7 +210,7 @@
         // Event Game Over: Sembunyikan gamepad, tampilkan tombol Main Lagi / Keluar
         connection.on("GameOverNotification", (reason) => {
             showScreen("game-over-card");
-            document.getElementById("reason-text").innerText = `Alasan: ${reason}`;
+            document.getElementById("reason-text").innerText = `${reason}`;
             statusText.textContent = "Permainan Selesai!";
             statusText.style.color = "#ef4444";
         });
