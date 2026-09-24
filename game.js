@@ -553,7 +553,7 @@ class Game {
         this.ctx.fillText(fruitsText, 25, 175);
     }
 
-    gameOver(message = "Game Over!") {
+   gameOver(message = "Game Over!") {
         if (this.isGameOver) return;
         this.isGameOver = true;
         
