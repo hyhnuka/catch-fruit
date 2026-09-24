@@ -563,11 +563,11 @@ class Game {
         const gameScreen = document.getElementById('game-screen');
         const gameOverScreen = document.getElementById('game-over-screen');
 
-        // Pastikan layar lobby & game play tertutup rapat
+        // Sembunyikan gameplay & lobby
         if (startScreen) startScreen.classList.add('hidden');
         if (gameScreen) gameScreen.classList.add('hidden');
         
-        // Munculkan layar Game Over
+        // Tampilkan pop-up skor Game Over di videotron
         if (gameOverScreen) gameOverScreen.classList.remove('hidden');
         document.getElementById('final-score').textContent = this.score;
         
@@ -576,22 +576,27 @@ class Game {
             messageElement.textContent = `Pemain ${this.playerName} Selesai! (${message})`;
         }
 
-        // Tahan layar Game Over selama 3.5 detik
+        // 1. KIRIM LANGSUNG KE BACKEND (HP langsung realtime berubah ke menu Main Lagi/Keluar)
+        if (connection.state === signalR.HubConnectionState.Connected) {
+            connection.invoke("TriggerGameOver", message)
+                .catch(err => console.error("Error trigger game over:", err));
+        }
+
+        // 2. Beri waktu 3.5 detik untuk penonton melihat skor di layar videotron
         setTimeout(() => {
-            // Tutup layar Game Over
+            // Tutup pop-up Game Over
             if (gameOverScreen) gameOverScreen.classList.add('hidden');
 
-            // Beritahu backend bahwa giliran selesai
-            if (connection.state === signalR.HubConnectionState.Connected) {
-                connection.invoke("TriggerGameOver", message)
-                    .catch(err => console.error("Error trigger game over:", err));
-            } else {
-                // Fallback jika SignalR putus: kembali ke layar QR
-                if (startScreen) startScreen.classList.remove('hidden');
+            // Reset flag agar NoActivePlayer tidak terblokir
+            this.isGameOver = false;
+
+            // Kembalikan videotron ke layar QR awal (jika belum ada antrean berikutnya)
+            if (startScreen) {
+                startScreen.classList.remove('hidden');
+                setStatus("lobby-status", "Antrean selesai. Silakan scan QR untuk bermain!");
             }
         }, 3500);
     }
-
     setupEventListeners() {
         window.addEventListener('keydown', (e) => {
             if (remoteKeys.hasOwnProperty(e.key)) remoteKeys[e.key] = true;
