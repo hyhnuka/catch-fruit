@@ -76,6 +76,27 @@ connection.on("GameStartForPlayer", (playerName) => {
     }, 2500);
 });
 
+connection.on("GameResumeForPlayer", (playerName) => {
+    const startScreen = document.getElementById("start-screen");
+    const gameScreen = document.getElementById("game-screen");
+    const gameOverScreen = document.getElementById("game-over-screen");
+    const overlay = document.getElementById("announcement-overlay");
+
+    // Langsung sembunyikan semua layar pembuka dan popup
+    if (startScreen) startScreen.classList.add("hidden");
+    if (gameOverScreen) gameOverScreen.classList.add("hidden");
+    if (overlay) overlay.classList.add("hidden");
+    
+    // Langsung buka layar gameplay
+    if (gameScreen) gameScreen.classList.remove("hidden");
+
+    if (window.activeGame) {
+        window.activeGame.playerName = playerName;
+        window.activeGame.resizeCanvas();
+        window.activeGame.start();
+    }
+});
+
 // 3. Menerima sinyal ketika tidak ada pemain di antrean (Layar Standby)
 connection.on("NoActivePlayer", () => {
     const startScreen = document.getElementById("start-screen");
@@ -502,10 +523,13 @@ class Game {
     }
 
     checkCollision(player, object) {
+        // Buah harus masuk lebih dalam ke keranjang sebelum dianggap kena
+        const catchThreshold = player.y + (player.height * 0.4); // 40% masuk ke dalam keranjang
+        
         return player.x < object.x + object.width &&
                player.x + player.width > object.x &&
-               player.y < object.y + object.height &&
-               player.y + player.height > object.y;
+               object.y + object.height >= catchThreshold &&
+               object.y <= player.y + player.height;
     }
 
     draw() {
@@ -519,9 +543,9 @@ class Game {
             this.ctx.fillStyle = '#1a7bb5';
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         }
-
-        this.player.draw(this.ctx);
+        
         this.fallingObjects.forEach(obj => obj.draw(this.ctx));
+        this.player.draw(this.ctx);
         this.partyPoppers.forEach(popper => popper.draw(this.ctx));
         this.drawUI();
     }
