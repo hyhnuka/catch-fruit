@@ -76,22 +76,25 @@ connection.on("GameStartForPlayer", (playerName) => {
     }, 2500);
 });
 
+// 2b. Menerima sinyal RESUME setelah iklan selesai
 connection.on("GameResumeForPlayer", (playerName) => {
     const startScreen = document.getElementById("start-screen");
     const gameScreen = document.getElementById("game-screen");
     const gameOverScreen = document.getElementById("game-over-screen");
     const overlay = document.getElementById("announcement-overlay");
 
-    // Langsung sembunyikan semua layar pembuka dan popup
+    // Sembunyikan QR dan Game Over seketika
     if (startScreen) startScreen.classList.add("hidden");
     if (gameOverScreen) gameOverScreen.classList.add("hidden");
     if (overlay) overlay.classList.add("hidden");
-    
-    // Langsung buka layar gameplay
+
+    // Buka kanvas game
     if (gameScreen) gameScreen.classList.remove("hidden");
 
+    // Mulai/Lanjutkan game pemain yang sedang aktif
     if (window.activeGame) {
         window.activeGame.playerName = playerName;
+        window.activeGame.isGameOver = false;
         window.activeGame.resizeCanvas();
         window.activeGame.start();
     }
@@ -119,9 +122,10 @@ async function startSignalR() {
     try {
         await connection.start();
         console.log("SignalR Connected!");
+        await connection.invoke("RegisterScreen");
         setStatus("status-text", "Terhubung ke Server!", "#4ade80");
         setStatus("connection-status", "SignalR Connected!", "#4ade80");
-        await connection.invoke("RegisterScreen");
+        
     } catch (err) {
         console.error("Gagal Konek SignalR:", err);
         setStatus("status-text", "Gagal terhubung ke server. Coba refresh.", "#f87171");
