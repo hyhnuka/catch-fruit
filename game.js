@@ -100,6 +100,7 @@ async function startSignalR() {
         console.log("SignalR Connected!");
         setStatus("status-text", "Terhubung ke Server!", "#4ade80");
         setStatus("connection-status", "SignalR Connected!", "#4ade80");
+        await connection.invoke("RegisterScreen");
     } catch (err) {
         console.error("Gagal Konek SignalR:", err);
         setStatus("status-text", "Gagal terhubung ke server. Coba refresh.", "#f87171");
