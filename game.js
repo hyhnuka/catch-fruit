@@ -258,11 +258,11 @@ class Game {
     loadAssets() {
         // 1. Gambar Background dari aset lokal
         const bgImg = new Image();
-        bgImg.src = "Assets/bg-catch-fruit.jpg";
+        bgImg.src = "assets/bg-catch-fruit.jpg";
 
         // 2. Gambar Keranjang Player dari aset lokal
         const basketImg = new Image();
-        basketImg.src = "Assets/keranjang-buah.png";
+        basketImg.src = "assets/keranjang-buah.png";
 
         const createFruitImage = (type) => {
             const canvas = document.createElement('canvas');
